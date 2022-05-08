@@ -4,6 +4,7 @@ addEventListener("fetch", (event) => {
 
 async function handleRequest(event) {
   const url = new URL(event.request.url);
+  const q = url.searchParams.get('q');
 
   if (url.pathname === "/") {
     return new Response("", {
@@ -23,7 +24,7 @@ async function handleRequest(event) {
     return error("URL format is /spreadsheet_id/sheet_name", 404);
   }
 
-  const cacheKey = `https://opensheet.elk.sh/${id}/${sheet}`;
+  const cacheKey = `https://${API_URL}/${id}/${sheet}`;
   const cache = caches.default;
   const cachedResponse = await cache.match(cacheKey);
   if (cachedResponse) {
@@ -77,10 +78,18 @@ async function handleRequest(event) {
 
   rawRows.forEach((row) => {
     const rowData = {};
-    row.forEach((item, index) => {
-      rowData[headers[index]] = item;
-    });
-    rows.push(rowData);
+    let push = true;
+
+    if (q) {
+      push = q.trim().split(/\s/).filter(q => q).some(q => row.join().toLowerCase().indexOf(q.toLowerCase()) > -1);
+    }
+
+    if (push) {
+      row.forEach((item, index) => {
+        rowData[headers[index]] = item;
+      });
+      rows.push(rowData);
+    }
   });
 
   const apiResponse = new Response(JSON.stringify(rows), {
